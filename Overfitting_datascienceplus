@@ -1,0 +1,194 @@
+<h3>Q. If you are new to Data Science field, then you are familiar what the word OVERFITTING, But the question is WHAT EXACTLY IS OVERFITTING?</h3>
+
+Overfitting refers to the model that learns too well from training data. Overfitting usually happens when a model learns the detail and noise in the training data to the extent that it starts to negatively impact the performance of the model on new test data.
+
+[caption id="attachment_26195" align="alignnone" width="490"]<a href="https://datascienceplus.com/wp-content/uploads/2019/10/1200px-Overfitting.svg_.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/10/1200px-Overfitting.svg_-490x490.png" alt="" width="490" height="490" class="size-medium wp-image-26195" /></a> Source:Forbes.com[/caption]
+
+[caption id="attachment_26196" align="alignnone" width="490"]<a href="https://datascienceplus.com/wp-content/uploads/2019/10/1_L392ucqge-zTsOJYieRN7A.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/10/1_L392ucqge-zTsOJYieRN7A-490x252.png" alt="" width="490" height="252" class="size-medium wp-image-26196" /></a> Source:ithelp.ithome.com.tw[/caption]
+
+Predictive modelling has two attributes - <strong>SIGNAL</strong> as the true underlying pattern that you wish to learn from the data, and <strong>NOISE</strong> refers to the irrelevant information or randomness in a dataset. <em>For example, let’s say you’re modelling height vs. age in children and if you sample a large portion of the population, you’d find a pretty clear relationship, this is the signal.
+
+However, if you could only sample one local school, the relationship might not look good and could be muddier. It would be affected by outliers (e.g. kid whose dad is a BasketBall player) and randomness (e.g. kids who hit puberty at different ages).</em>
+
+<strong>Noise interferes with the signal</strong> and here’s where machine learning comes in. A well functioning<strong> ML algorithm will separate the signal from the noise.</strong> If the algorithm is to <strong>complex or flexible</strong> <em>(e.g. it has too many input features or it’s not properly regularized)</em>, it may memorize the noise instead of finding the signal thus resulting in Overfitting of your model.
+
+Most of the times the cause of <strong>poor performance in machine learning is either overfitting or underfitting of the data</strong>. <em>Suppose say we want to predict if a student will land a job interview based on her/his resume. Now, assume we train a model from a dataset of 5000 resumes and their outcomes values. Next, we try the model out on the original dataset which he have in the test folder, and it predicts outcomes with 99% accuracy.</em> This indicates that we run the model on a new (“unseen”) dataset of resumes, we only get 50% accuracy. Our model doesn’t generalize well from our training data to unseen data. This is known as overfitting which is a very common problem in machine learning and data science which every Data Scientist has to face several times in their career.
+
+
+
+<h2>Understanding The Reason Behind Overfitting</h2>
+<strong>Lets us assume approximating a target function (f) that maps input variables (X) to an output variable (Y).
+
+$$Y = f(X)$$
+</strong>
+
+This characterization describes the range of<strong> classification and prediction problems</strong> and also the machine learning algorithms that can be used to address them.
+An important consideration in learning the target function from the training data is how well our model is generalized to our new data. <strong>Generalization is important because the data we collect is only a sample which in most cases is incomplete and noisy.</strong> Generalization also refers to </strong>how well the concepts learned by a machine learning model applied to specific examples is not seen by the model when it was learning.</strong>
+
+The goal of a good machine learning model is to <strong>generalize well from the training data to any data from the problem domain</strong>. This allows us to make predictions in the future on data the model has never seen. If we know the form of the <strong>target function, we can use it directly to make predictions, rather than trying to learn an approximation from samples of noisy training data.</strong>
+
+The causes of overfitting are the <strong>non-parametric and non-linear methods</strong> because these types of <em>machine learning algorithms will have more freedom in building the model based on the dataset and therefore they can really build unrealistic models.</em>
+
+
+
+<h2>What is a Good Fit in Machine Learning</h2>
+
+Alway select a model at the sweet spot between underfitting and overfitting. This is the goal to achieve a good fit but is very difficult to do. To understand this goal, we can look at the performance of a machine learning algorithm over time as it is learning training data(when the model is training). We can plot both the skill on the training data and the skill on a test dataset we have held back from the training process.
+
+Over time, as the algorithm learns, the error for the model on the training data goes down and so does the error on the test dataset. If we train for too long, the performance on the training dataset may continue to decrease because the model is overfitting and learning the irrelevant detail and noise in the training dataset. At the same time, the error for the test set starts to rise again as the model’s ability to generalize decreases.
+
+The sweet spot is the point just before the error on the test dataset starts to increase where the model has good skill on both the training dataset and the unseen test dataset. Two of the most common techniques used to help find the sweet spot in practice: resampling methods and a validation dataset.
+
+
+
+<h2>How to Detect Overfitting in your models</h2>
+
+[caption id="attachment_26197" align="alignnone" width="300"]<a href="https://datascienceplus.com/wp-content/uploads/2019/10/early-stopping-graphic.jpg"><img src="https://datascienceplus.com/wp-content/uploads/2019/10/early-stopping-graphic.jpg" alt="" width="300" height="259" class="size-full wp-image-26197" /></a> Source:yq.aliyun.com<br />[/caption]
+
+<strong>When your model is much better on the training set than on the validation set, it means it is memorizing individual training dataset examples to some extent and that way it can predict your training data too well, but it does not generalize well on the actual problem and thus fails on unseen examples. To address this, we can split our initial dataset into separate training and test subsets.</strong>
+ 
+Another solution would be to avoid overfitting by using a linear algorithm if we have linear data or using the parameters like the maximal depth if we are using decision trees. This method can approximate of how well our model will perform on new data. If our model does much better on the training set than on the test set, then we’re likely overfitting.
+
+<em>For example, it would be a big red flag if our model saw 99% accuracy on the training set but only 55% accuracy on the test set.</em>
+
+Another way is to start with a very simple model to serve as a benchmark. Then, as you try more complex algorithms, you’ll have a reference point to see if the additional complexity is worth it. <em>This is the Occam’s razor test. If two models have comparable performance, then you should usually pick the simpler one.</em>
+
+
+
+<h2>How to Prevent Overfitting of Your Models</h2>
+
+Here are a few of the most popular solutions for overfitting:
+
+<h3>1.Early Stopping</h3>
+
+When you’re training a learning algorithm iteratively, you can measure how well each iteration of the model performs which is generally called epochs. Up until a certain number of iterations, new upcoming iterations improve the model. After that point, however, the model’s ability to generalize can weaken as it begins to overfit the training data.
+
+Its rules provide us with guidance as to how many iterations can be run before the learner begins to over-fit. <em>Early stopping refers to stopping the training process before the learner passes that point.</em> <strong>Today, this technique is mostly used in deep learning while other techniques (e.g. regularization) are preferred for classical machine learning.</strong>
+
+<h3>2.Training with More Data</h3>
+
+This method won’t work every time, but <em>training with more data can help algorithms detect the signal better.</em>But, that’s not always the case. If we just add more noisy data, this technique won’t help. <strong>That’s why you should always ensure your data is clean and relevant.</strong>
+
+<h3>3.Cross-Validation</h3>
+
+Cross-validation is a powerful preventative measure against overfitting. <em>The idea behind cross-validation is the same as with a single holdout validation set, to estimate the model's predictive performance on unseen data. In other words, cross-validation does not prevent overfitting in itself, but it may help in identifying a case of overfitting.</em>
+
+<strong>By the use of your initial training data to generate multiple mini train-test splits we then use these splits to tune your model.</strong>
+In standard k-fold cross-validation, we partition the data into k subsets, called folds. Then, we iteratively train the algorithm on k-1 folds while using the remaining fold as the test set.
+
+<strong>Cross-validation allows you to tune hyperparameters with only your original training set. This allows you to keep your test set as a truly unseen dataset for selecting your final model. A standard way to find out-of-sample prediction error is to use 5-fold cross-validation.</strong>
+
+<h3>4.Removing extra Features</h3>
+
+Some algorithms have built-in feature selection. For those that don’t, <em>you can manually improve their generalizability by removing irrelevant input features.</em> An interesting way to do so is to tell a story about how each feature fits into the model. <strong>This is like the data scientist's spin on software engineer’s rubber duck debugging technique, where they debug their code by explaining it, line-by-line, to a rubber duck.</strong>
+
+If anything doesn't make any sense, or if it’s hard to justify certain features, this is a good way to identify them. <em>In addition, there are several feature selection heuristics you can use for a good starting point.</em>
+
+<h3>5.Pruning</h3>
+
+<strong>Pruning is extensively used while building-related models. It simply removes the nodes which add little predictive power for the problem in hand.</strong>. There are several approaches to avoiding overfitting in building decision trees. <em>Pre-pruning that stop growing the tree earlier, before it perfectly classifies the training set. Post-pruning that allows the tree to perfectly classify the training set, and then post prune the tree.</em> 
+
+<h3>6.Regularization</h3>
+
+<em>Regularization basically adds the penalty as model complexity increases. The regularization parameter (lambda) penalizes all the parameters except intercept so that the model generalizes the data and won’t overfit.</em> <em>Regularization will add the penalty for higher terms. This will decrease the importance given to higher terms and will bring the model towards less complex equations.</em>
+
+It introduces a cost term for bringing in more features with the objective function. Hence <strong>it tries to push the coefficients for many variables to zero and hence reduce cost term.</strong> The method will depend on the type of learner you’re using. For example, you could prune a decision tree, use dropout on a neural network, or add a penalty parameter to the cost function in regression.
+
+<strong>Oftentimes, the regularization method is a hyperparameter as well, which means it can be tuned through cross-validation.</strong>
+
+<h3>7.Ensembling</h3>
+
+<em>Ensembles are machine learning methods for combining predictions from multiple individual models.</em> There are a few different methods for ensembling, but the two most common are:
+
+<strong>* Bagging attempts to reduce the chance of overfitting complex models.</strong>
+
+In this method, it trains a large number of "strong" learners in parallel, where a strong learner is a model that's relatively unconstrained and Bagging then combines all the strong learners together in order to sooth their predictions.
+
+<strong>* Boosting attempts to improve the predictive flexibility of simple models.</strong>
+
+It trains a large number of "weak" learners in sequence, where a weak learner is a constrained model (i.e. you could limit the max depth of each decision tree). Each one in the sequence focuses on learning from the mistakes of the one before it. Boosting then combines all the weak learners into a single strong learner.
+
+<em>While bagging and boosting are both ensemble methods, they approach the problem from opposite directions.</em> <strong>Bagging uses complex base models and tries to "smooth out" their predictions while boosting uses simple base models and tries to "boost" their aggregate complexity.
+
+Bagging gets its name because it combines Bootstrapping and Aggregation to form one ensemble model. Given a sample of data, multiple bootstrapped subsamples are pulled. A Decision Tree is formed on each of the bootstrapped subsamples. After each subsample Decision Tree has been formed, an algorithm is used to aggregate over the Decision Trees to form the most efficient predictor.</strong>
+
+<h3>8.Use of Esampling technique to estimate model accuracy</h3>
+
+<strong>The most popular resampling technique is k-fold cross-validation.</strong>
+
+<em>It allows you to train and test your model k-times on different subsets of training data and build up an estimate of the performance of a machine learning model on unseen data.</em>
+
+<h3>9. Hold back a validation dataset</h3>
+
+<em>A validation dataset is simply a subset of your training data that you hold back from your machine learning algorithms until the very end process of your project.</em> After you have selected and tuned your machine learning algorithms on your training dataset you can then evaluate the learned models on the validation dataset to get a final objective idea of how the models might perform on unseen data.
+
+<strong>Using cross-validation is a gold standard in applied machine learning for estimating model accuracy on unseen data. If you have the data, using a validation dataset is also an excellent practice.</strong>
+
+<h3>SUMMARY:</h3>SO in today's article 
+
+* You know what exactly is overfitting and critical reasons causing overfitting.
+* What is a good fit in a machine learning models and how not to overfit.
+* How to detect overfitting in your model and avoid overfitting in most of the cases.
+* Different methods which can be used to prevent overfitting.
+
+<h3>Credits:</h3>Be sure to refer to the Overfitting and Underfitting With Machine Learning Algorithms by Jason Brownlee for more details.
+
+Additionally, definitely check out Jason Brownlee  https://machinelearningmastery.com which helped inspire today’s blog post.
+
+<h2>References</h2>
+<em>
+1.https://elitedatascience.com/overfitting-in-machine-learning
+2.lasseschultebraucks.com/overfitting-underfitting-ml/
+3.https://machinelearningmastery.com/overfitting-and-underfitting-with-machine-learning-algorithms/
+4.https://wikipedia.com/over-fitting/
+</em>
+
+You can follow me on my social media profiles for more udpates:
+
+<strong>GitHub</strong> <a href="https://github.com/abhiwalia15" rel="noopener noreferrer" target="_blank">Mrinal Walia Github</a>
+<strong>LinkedIn</strong> <a href="https://www.linkedin.com/in/mrinal-walia-b0981b158/" rel="noopener noreferrer" target="_blank">Mrinal Walia LinkedIn</a>
+<strong>Medium</strong> <a href="https://medium.com/@waliamrinal" rel="noopener noreferrer" target="_blank">Mrinal Walia Medium</a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
