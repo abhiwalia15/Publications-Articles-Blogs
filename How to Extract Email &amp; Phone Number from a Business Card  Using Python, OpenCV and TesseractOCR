@@ -1,0 +1,424 @@
+
+In this blog post, you will learn how to extract email and phone number from a business card and save the output in a JSON file.
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/ezgif-4-556623fc2099.gif"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/ezgif-4-556623fc2099.gif" alt="" width="1200" height="579" class="alignnone size-full wp-image-25114" /></a>
+
+<h3>Here is how Email &amp; Phone Number Extractor App looks like:</h3>
+
+[video width="1920" height="1080" mp4="https://datascienceplus.com/wp-content/uploads/2019/08/output.mp4"][/video]
+
+
+<h2>Building the email and phone number extractor with OpenCV &amp; TesseractOCR can be done by following five easy steps :</h2> 
+<ul>
+<li>Step 1: We will start by <strong>detecting the edges</strong> of the document we want to scan.</li>
+<li>Step 2: Using these edges, find the <strong>contour(outline)</strong> representing the piece of the document being scanned.</li>
+<li>Step 3: Apply a <strong>perspective transform</strong> to obtain the <strong>top-down</strong> view of the document.</li>
+<li>Step 4: Using <strong>pytesseract</strong> to extract text from the scanned image.</li>
+<li>Step 5: Apply <strong>regex</strong> to identify only the email and phone number in the extracted text and save the output.</li>
+</ul>
+
+You can download the source code to this blog post here: <a href="https://github.com/abhiwalia15/Document-Scanner-Using-OpenCV-Python" rel="noopener noreferrer" target="_blank">My github repo </a>
+
+
+We first start with <strong>fpt.py</strong> module. I use these functions whenever I need to do a 4 point <strong>cv2.getPerspectiveTransform</strong> using OpenCV.
+
+<h2>4 Point OpenCV getPerspective Transform: </h2>
+
+We can use a <strong>perspective transform</strong> to obtain a <strong>top-down, "bird's eye view"</strong> of an image. You can use this code for your personal work every time when you need to do a <strong>4 point perspective transform.</strong> 
+
+Open a file and name it <strong>fpt.py</strong> or you can directly open <strong>fpt.py</strong> by downloading the source code:  
+
+<pre>
+#import all the necessary packages
+
+import numpy as np
+import cv2
+ 
+def order_points(pts):
+	rect = np.zeros((4, 2), dtype = "float32")
+ 
+	s = pts.sum(axis = 1)
+	rect[0] = pts[np.argmin(s)]
+	rect[2] = pts[np.argmax(s)]
+ 
+	diff = np.diff(pts, axis = 1)
+	rect[1] = pts[np.argmin(diff)]
+	rect[3] = pts[np.argmax(diff)]
+ 
+	# return the ordered coordinates
+	return rect
+</pre>
+
+We will start by importing all the necessary packages that we need. We are using <strong>Numpy</strong> for numerical processing and <strong>cv2</strong> for our OpenCV bindings.
+
+Then we define the <strong>order_points</strong> function which takes a single argument <strong>pts</strong>, which is a list of four points specifying <strong>(x, y)</strong> coordinates of each point of the rectangle/document we want to scan.
+
+It is absolutely <strong>crucial</strong> that we have a <strong>consistent ordering</strong> of the points in the rectangle. The actual ordering itself can be <strong>arbitrary</strong>, as long as it is consistent throughout the implementation.
+
+We have specified points in <strong>top-left, top-right, bottom-right, and bottom-left</strong> order.
+
+We Initialise a list of coordinates that will be ordered such that the first entry in the list is the <strong>top-left, the second entry is the top-right, the third is the bottom-right, and the fourth is the bottom-left.</strong>
+
+We will start by <strong>allocating memory</strong> for the four ordered points.
+
+Then, we’ll find the <strong>top-left</strong> point, which will have the <strong>x + y sum</strong>, and the <strong>bottom-right</strong> point, which will have the largest <strong>x + y sum</strong>.
+
+Now we’ll have to find the <strong>top-right</strong> and <strong>bottom-left</strong> points by taking the difference <strong>(i.e. x – y)</strong> between the points using the <strong>np.diff</strong> function.
+
+The coordinates associated with the smallest difference will be the <strong>top-right</strong> points, whereas the coordinates with the largest difference will be the <strong>bottom-left</strong> points.
+
+Finally, we return our ordered functions to the <strong>calling function</strong>. 
+
+<h3>Now you'll see how important it is to maintain a <strong>consistent ordering</strong> of points in this next function:</h3>
+
+<pre>
+def four_point_transform(image, pts):
+	rect = order_points(pts)
+	(tl, tr, br, bl) = rect
+ 
+	widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+	widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+	maxWidth = max(int(widthA), int(widthB))
+ 
+	heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+	heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+	maxHeight = max(int(heightA), int(heightB))
+ 
+	dst = np.array([
+		[0, 0],
+		[maxWidth - 1, 0],
+		[maxWidth - 1, maxHeight - 1],
+		[0, maxHeight - 1]], dtype = "float32")
+ 
+	# compute the perspective transform matrix and then apply it
+	M = cv2.getPerspectiveTransform(rect, dst)
+	warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+ 
+	# return the warped image
+	return warped
+</pre>
+
+
+Here we start off by defining the <strong>four_points_transform</strong> function which requeires two arguments <strong>"image"</strong> and <strong>"pts"</strong>.
+
+The <strong>image</strong> variable is the image we want to apply the perspective transform to and the <strong>pts</strong> list is the list of four points that contain the <strong>ROI</strong> of the image we want to transform.
+
+Then we make a call to the <strong>order_points</strong> function which places our <strong>pts</strong> variable in a consistent order and then we unpack these arguments for our own convenience.
+
+Then we need to determine the dimensions of our new wrapped image. We first determine it's <strong>width</strong>, where the <strong>width</strong> is the largest distance between the <strong>bottom-right</strong> and <strong>bottom-left X-coordinates</strong> or the <strong>top-right</strong> and <strong>top-left X-coordinates</strong>. In a similar fashion, we determine the <strong>height</strong> of the new image, where the <strong>height</strong> is the maximum distance between the <strong>top-right</strong> and <strong>bottom-right y-coordinates</strong> or the <strong>top-left</strong> and <strong>bottom-left y-coordinates</strong>.
+
+Now that we have the dimensions of the new image, construct the set of destination points to obtain a <strong>"birds eye view",(i.e. top-down view)</strong> of the image, again specifying points in the <strong>top-left, top-right, bottom-right, and bottom-left order</strong>
+
+We define 4 points representing our <strong>“top-down”</strong> view of the image. The first entry in the list is <strong>(0, 0)</strong>  indicating the <strong>top-left corner</strong>. The second entry is <strong>(maxWidth - 1, 0)</strong>  which corresponds to the <strong>top-right corner</strong>. Then we have <strong>(maxWidth - 1, maxHeight - 1)</strong>  which is the <strong>bottom-right corner</strong>. Finally, we have <strong>(0, maxHeight - 1)</strong>  which is the <strong>bottom-left corner</strong>.
+
+To actually obtain the top-down, <strong>“bird's eye view”</strong> of the image we’ll utilize the <strong>cv2.getPerspectiveTransform</strong>  function. This function requires two arguments, <strong>rect</strong> , which is the list of 4 ROI points in the original image, and <strong>dst</strong> , which is our list of transformed points. The <strong>cv2.getPerspectiveTransform</strong>  function returns M , which is the actual transformation matrix we want.
+
+Then after getting the <strong>transformation matrix</strong> we then apply the <strong>transformation matrix</strong> using the <strong>cv2.warpPerspective</strong>  function. Then we pass in the <strong>image</strong> , our <strong>transform matrix M</strong> , along with the <strong>width</strong> and <strong>height</strong> of our output image.
+
+The output of <strong>cv2.warpPerspective</strong>  is our <strong>warped  image</strong>, which is our <strong>top-down view</strong>.
+
+At last We then return this <strong>top-down</strong> view to the <strong>calling function</strong>.
+
+Whenever you need to perform a <strong>4 point perspective transform</strong>, you should be using <strong>fpt.py</strong> module.
+
+And you guessed it right, we’ll be using it to build our very own <strong>Business Card scanner.</strong>.
+
+So let’s get down to business.
+
+
+<h3>Open up your favourite IDE, create a new file and name it <strong>main.py</strong> \:</h3>
+
+<pre>
+# import the necessary packages
+from fpt import four_point_transform
+from skimage.filters import threshold_local
+import numpy as np
+import argparse
+import cv2
+import imutils
+ 
+# construct the argument parser and parse the arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("-i", "--image", required = True,
+	help = "Path to the image to be scanned")
+args = vars(ap.parse_args())
+</pre>
+
+First, we import all the required packages We’ll start by importing our <strong>four_point_transform</strong>  function which I discussed above.
+
+We’ll also be using the <strong>imutils</strong> module, which contains convenience functions for resizing, rotating, and cropping images. To install imutils, simply:
+<pre>$ pip install --upgrade imutils</pre>
+
+Next up, let’s import the <strong>threshold_local</strong>  function from <strong>scikit-image</strong>function which will help us obtain the <strong>“black and white”</strong> feel to our scanned image.
+
+Lastly, we’ll use <strong>NumPy</strong> for numerical processing, <strong>argparse</strong>  for parsing command line arguments and <strong>cv2</strong>  for our <strong>OpenCV</strong> bindings.
+
+<strong>argparse</strong> handle parsing our command-line arguments. Here we’ll need only a single switch image, --image, which is the path to the image that contains the document we want to scan.
+
+
+<h2>STEP 1:First off we need to perform edge detection:</h2>
+
+<pre>
+
+image = cv2.imread(args["image"])
+ratio = image.shape[0] / 500.0
+orig = image.copy()
+image = imutils.resize(image, height = 500)
+ 
+# convert the image to grayscale, blur it, and find edges
+# in the image
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+gray = cv2.GaussianBlur(gray, (5, 5), 0)
+edged = cv2.Canny(gray, 75, 200)
+ 
+# show the original image and the edge detected image
+print("STEP 1: Edge Detection")
+cv2.imshow("Image", image)
+cv2.imshow("Edged", edged)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+</pre>
+
+
+First we load our image on disk and in order to speed up the <strong>image processing</strong> and as well as to make our <strong>edge detection</strong> step more <strong>accurate</strong>, we resize our scanned image to have a height of <strong>500 pixels</strong>.
+
+We have also taken care to keep track of the ratio of the original height of the image to the new height which this will allow us to perform the scan on the <strong>original image</strong> rather than the <strong>resized image</strong>.
+
+And then, we convert the image from <strong>RGB</strong> to <strong>grayscale</strong>, then perform <strong>Gaussian blurring</strong> to remove <strong>high-frequency noise</strong>, and then at last perform <strong>Canny edge detection</strong>.
+
+<h3>OUTPUT: of step 1 is shown below:,</h3>
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-09-21-04-29.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-09-21-04-29.png" alt="" width="1496" height="547" class="alignnone size-full wp-image-25107" /></a>
+
+
+Note: how the picture is captured at an angle which is definitely not a 90-degree, but the top-down view of the document we have scanned.
+
+And on the right, you can see the image after performing edge detection with the outlines of the scanned document. NOT SO BAD, IS IT.
+
+
+<h2>Step 2: To find the contours in our image:</h2>
+
+A document scanner simply scans in a piece of paper which is assumed to be a rectangle and a rectangle has four edges. Hence we create a simple method to help us build our very own <strong>document scanner</strong>.
+
+<strong>Note: We'll assume that the largest contour in the image with exactly four points is the piece of paper we want to scan. It is safe to assume that the piece of the document we want to scan has four edges.</strong>
+
+<pre>
+
+cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+cnts = imutils.grab_contours(cnts)
+cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:5]
+ 
+# loop over the contours
+for c in cnts:
+	# approximate the contour
+	peri = cv2.arcLength(c, True)
+	approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+ 
+	# our approximated contour should have four points
+	if len(approx) == 4:
+		screenCnt = approx
+		break
+ 
+# show the contour 
+print("STEP 2: Find contours of paper")
+cv2.drawContours(image, [screenCnt], -1, (0, 255, 0), 2)
+cv2.imshow("Outline", image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+</pre>
+
+
+We start off by finding the <strong>contours</strong> in our edged image.
+
+A neat performance hack that I like to do is actually sort the contours by area and keep only the largest ones, this allows us to only examine the largest of the contours.
+
+Then we loop over the contours and then approximate the number of points. If the approximated contour has <strong>four points</strong>, then we assume that we have found the document in the image. 
+
+Display the <strong>contours</strong> of the document we want to scan.
+
+<h3>Let us have a look at the output of step 2:</h3>
+
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-11-04_2.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-11-04_2.png" alt="" width="752" height="579" class="alignnone size-full wp-image-25108" /></a>
+
+
+<strong>Note: So as you can see we have successfully identified the edge detected image to find the contour (outline) of the document, which is shown by the green rectangle.</strong>
+
+
+<h2>Step 3: Perspective Transform and Threshold</h2>
+
+Here we apply <strong>perspective transform</strong> by taking the four points representing the outline of the document to obtain a <strong>top-down, "birds-eye view"</strong> of the image.
+
+<pre>
+
+warped = four_point_transform(orig, screenCnt.reshape(4, 2) * ratio)
+ 
+warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+T = threshold_local(warped, 11, offset = 10, method = "gaussian")
+warped = (warped &gt; T).astype("uint8") * 255
+ 
+# show the scanned image and save one copy in out folder
+print("STEP 3: Apply perspective transform")
+
+imS = cv2.resize(warped, (650, 650))
+cv2.imshow("output",imS)
+cv2.imwrite('out/'+'Output Image.PNG', imS)
+cv2.waitKey(0)
+
+</pre>
+
+
+We start by performing the <strong>warping transformation</strong> and all the heavy lifting is handled by the <strong>four_point_transform</strong> function. 
+
+Here as you can see, we have passed <strong>two arguments</strong> into <strong>four_point_transform</strong> function: first is the <strong>original image</strong> we are loading off the disk(not the resized one), and the second argument is the <strong>contour</strong> representing the document which is multiplied by the resized ratio.
+
+We have multiplied <strong>contour</strong> by the <strong>resized ratio</strong> because we performed <strong>edge detection</strong> and found contours on the resized image of <strong>height=500 pixels</strong>.
+
+If we want to perform scan on the <strong>original image</strong>, not the resized image, then we need to multiply the contour points by the <strong>resized ratio</strong>.
+
+And at the end to obtain the <strong>black and white</strong> feel to the image, we then take the <strong>warped image</strong>, convert it to <strong>grayscale</strong> and apply <strong>adaptive thresholding</strong>.
+
+Finally, we display our output and <strong>save one copy on disk locally</strong>.
+
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-09-21-04-53.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-09-21-04-53.png" alt="" width="1628" height="709" class="alignnone size-full wp-image-25109" /></a>
+
+
+<h2>Step 4: Extracting text from our final scanned image:</h2>
+
+Before using <strong>Tesseract OCR</strong> library in our system, we first need to install it:
+
+<pre>
+#for macOS users
+$ brew install tesseract
+
+#for Ubuntu users
+$ sudo apt-get install tesseract-ocr
+</pre>
+
+For Windows users, you also need to include <strong>pytesseract</strong> in your path. You can download the tesseract library from <a href="https://pypi.org/project/pytesseract/#files" rel="noopener noreferrer" target="_blank">Tesseract-OCR</a>. After downloading and installing follow these steps:
+
+<pre>
+pip install pytesseract
+
+#include pytesseract in your path
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+TESSDATA_PREFIX = 'C:/Program Files /Tesseract-OCR'
+
+</pre>
+
+<pre>
+
+from PIL import Image
+import PIL.Image
+
+from pytesseract import image_to_string
+import pytesseract
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+TESSDATA_PREFIX = 'C:/Program Files /Tesseract-OCR'
+output = pytesseract.image_to_string(PIL.Image.open('out/'+ 'Output Image.PNG').convert("RGB"), lang='eng')
+print(output)
+
+f = open('email.json','w')
+f.write(output)
+f.close()
+
+</pre>
+
+We first start by importing our <strong>tesseract library</strong> used for <strong>extracting</strong> text from our scanned image and also <strong>importing PIL package</strong> which we will be using for <strong>opening, manipulating, and saving</strong> many different image file formats.
+
+Then we add <strong>tesseract</strong> to our path and use <strong>image_to_string</strong> method to return the result of a Tesseract OCR run on the <strong>image to a string</strong> and we use the <strong>English language</strong> to convert to text. 
+
+We then create an <strong>email.json </strong>file in <strong>write mode</strong> and then open the file and write the output in that file.
+
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-12-16_01.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-12-16_01.png" alt="" width="617" height="485" class="alignnone size-full wp-image-25110" /></a>
+
+
+<h2>STEP 5: Using Regex to extract only email and phone number</h2>
+
+This will be our last step in building a <strong>business card email and phone number extractor.</strong>
+
+<pre>
+
+import re
+
+#regular expression to find emails
+emails = re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+", output)
+#regular expression to find phone numbers
+numbers = re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', output)
+
+print(numbers)
+print(emails)
+
+for email in emails:
+	print('EMAIL :-&gt; ' + email)
+	F = open('emails.json','a+')
+	F.write('EMAIL :-&gt; ' + email)
+
+for number in numbers:
+	print('Phone No. :-&gt; ' + number)
+	F = open('emails.json', 'a+')
+	F.write('\n Phone No. :-&gt; ' + number)
+
+</pre>
+
+We start by importing the <strong>re</strong> library. A <strong>regular expression</strong> is a special sequence of characters that helps you match or find other strings or sets of strings, using a <strong>specialized syntax</strong> held in a pattern. 
+
+<strong>"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+"</strong> is the <strong>regular expression</strong> used to find <strong>emails</strong> in any given <strong>string pattern</strong>. We are using <strong>findall</strong> method to find emails in the tesseract run output.
+<strong>'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]'</strong> is the regular expression used to find numbers:
+
+*The matched string may start with <strong>+ or ( </strong>symbol
+*It has to be followed by a number between <strong>1-9</strong>
+*It has to end with a number between <strong>0-9</strong>
+*It may contain <strong>0-9</strong> (space) <strong>.-() </strong>in the middle.
+
+It will return the <strong>list</strong> as an output. We then loop through all the <strong>extracted emails and phone number list</strong> and print the <strong>emails and phone number</strong> and also <strong>save the output</strong> in the <strong>emails.json</strong> file in <strong>append mode</strong>.
+
+We can also save the <strong>output in other formats</strong> such as <strong>text or excel</strong> by just changing the extension <strong>{emails.txt, emails.xls}</strong> of the file opened.
+
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-12-13_01.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-12-13_01.png" alt="" width="707" height="239" class="alignnone size-full wp-image-25111" /></a>
+
+
+<h2>Email and Phone Number Extractor Output</h2>
+
+Open terminal and run the following command:
+
+<pre>$ python scan.py --image images/abi.jpg</pre>
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-11-18_01_01.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-11-18_01_01.png" alt="" width="853" height="503" class="alignnone size-full wp-image-25115" /></a>
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/ezgif-4-556623fc2099.gif"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/ezgif-4-556623fc2099.gif" alt="" width="1200" height="579" class="alignnone size-full wp-image-25114" /></a>
+
+On the right, we have the <strong>original image</strong> and on the left, we have the <strong>scanned image</strong>.
+
+Now you can see how the <strong>perspective</strong> of the scanned image has changed — we have a <strong>top-down, 90-degree</strong> view of the image. And thanks to our <strong>adaptive thresholding</strong>, we also have a nice, clean <strong>black and white</strong> feel to the document as well.
+
+<a href="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-12-13_01.png"><img src="https://datascienceplus.com/wp-content/uploads/2019/08/Screenshot-from-2019-08-08-22-12-13_01.png" alt="" width="707" height="239" class="alignnone size-full wp-image-25111" /></a>
+
+Also, we were successfully able to detect phone number and email in our scanned document image and save it in the JSON file.
+
+<h2>Conclusion:</h2>
+
+Today you have learned how to build a business card information extractor using OpenCV + TesseractOCR + Python.
+
+Our <strong>first step</strong> is to applying <strong>edge detection</strong>.
+The <strong>second step</strong> is to find the <strong>contours</strong> in the image that represent the document we want to scan.
+And the <strong>third step</strong> is to apply a <strong>perspective transform</strong> to obtain a <strong>top-down, 90-degree</strong> view of the image, just as if we scanned the document.In next step we use <strong>TesseractOCR</strong> library for <strong>image to string</strong> conversion and then in our final step we make use of <strong>regex(regular expressions)</strong> to extract required information.
+
+So there you have it, your own <strong>Business Card Information Extractor</strong>!
+
+Hope you all liked this article. Do like and share this article with your peers. For any doubts feel free to comment down below.
+
+Of course, my work here is not possible without the help of <a href="https://www.pyimagesearch.com/" rel="noopener noreferrer" target="_blank">Adrian Rosebrock</a> tutorial and for <strong>Perspective Transform &amp; Threshold</strong>, I took references from <strong>Adrian Rosebrock's</strong> article. 
+
+Also follow me on my social media profiles:
+
+<strong>GitHub</strong> <a href="https://github.com/abhiwalia15" rel="noopener noreferrer" target="_blank">Mrinal Walia Github</a>
+<strong>LinkedIn</strong> <a href="https://www.linkedin.com/in/mrinal-walia-b0981b158/" rel="noopener noreferrer" target="_blank">Mrinal Walia LinkedIn</a>
+<strong>Medium</strong> <a href="https://medium.com/@waliamrinal" rel="noopener noreferrer" target="_blank">Mrinal Walia Medium</a>
+
+
+
